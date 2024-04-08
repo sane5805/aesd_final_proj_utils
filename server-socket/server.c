@@ -37,7 +37,7 @@ void func(int connfd)
             ; 
    
         // and send that buffer to client 
-        send(connfd, buff, sizeof(buff)); 
+        write(connfd, buff, sizeof(buff)); 
    
         // if msg contains "Exit" then server exit and chat ended. 
         if (strncmp("exit", buff, 4) == 0) { 
@@ -86,7 +86,7 @@ int main()
     len = sizeof(cli); 
    
     // Accept the data packet from client and verification 
-    connfd = accept(sockfd, (SA*)&cli, &len); 
+    connfd = accept(sockfd, (SA*)&cli, (socklen_t *)&len); 
     if (connfd < 0) { 
         printf("server accept failed...\n"); 
         exit(0); 
