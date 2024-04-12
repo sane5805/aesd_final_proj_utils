@@ -38,7 +38,7 @@ void initialize() {
 
 // Function to continuously read temperature from the sensor and send it to the message queue
 void read_temperature() {
-    //uint8_t buffer[1];
+    uint8_t buffer[1];
     char command;
     i2c_data sensor_data;
     double temp_val;
@@ -77,11 +77,11 @@ void read_temperature() {
             exit(EXIT_FAILURE);
         }
 
-	bzero(temp_val, sizeof(double) + sizeof(double));
+	temp_val = (double) sensor_data.word;
 
         temp_val = ((temp_val * 0.02) - 0.01) - 273.15;
  	
-	fprintf("\n temp_val = %d \n");
+	//fprintf("\n temp_val = %d \n");
 
         // Introduce delay
         usleep(SLEEP_DURATION);
