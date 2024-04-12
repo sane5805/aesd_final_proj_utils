@@ -23,14 +23,10 @@
 
 #define SLEEP_DURATION		(1000000)
 
-// Define message queue attributes
-struct mq_attr message_queue_attributes;
-
 // Define union for I2C data
 typedef union i2c_smbus_data i2c_data;
 
-// Declare message queue descriptor and file descriptor for I2C device
-mqd_t message_queue_descriptor;
+// Declare file descriptor for I2C device
 int file_descriptor;
 
 // Function to initialize I2C communication and message queue
@@ -42,10 +38,10 @@ void initialize() {
 
 // Function to continuously read temperature from the sensor and send it to the message queue
 void read_temperature() {
-    uint8_t buffer[1];
+    //uint8_t buffer[1];
     char command;
     i2c_data sensor_data;
-    double temperature;
+    double temp_val;
 
     // Set soft reset command and sensor address
     buffer[0] = SOFT_RESET_COMMAND;
@@ -85,7 +81,7 @@ void read_temperature() {
 
         temp_val = ((temp_val * 0.02) - 0.01) - 273.15;
  	
-	print("\n temp_val = %d \n");
+	fprintf("\n temp_val = %d \n");
 
         // Introduce delay
         usleep(SLEEP_DURATION);
