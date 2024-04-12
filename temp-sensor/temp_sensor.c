@@ -38,13 +38,13 @@ void initialize() {
 
 // Function to continuously read temperature from the sensor and send it to the message queue
 void read_temperature() {
-    uint8_t buffer[1];
+    //uint8_t buffer[1];
     char command;
     i2c_data sensor_data;
     double temp_val;
 
     // Set soft reset command and sensor address
-    buffer[0] = SOFT_RESET_COMMAND;
+    //buffer[0] = SOFT_RESET_COMMAND;
     unsigned char sensor_slave_address = TEMPERATURE_SENSOR_ADDRESS;
     
     while(1) {
