@@ -1,4 +1,4 @@
-CROSS_COMPILE=
+CROSS_COMPILE = arm-buildroot-linux-gnueabihf-
 
 ifeq ($(CC),)
 	CC=$(CROSS_COMPILE)gcc
