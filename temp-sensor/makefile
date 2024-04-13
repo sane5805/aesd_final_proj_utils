@@ -15,11 +15,12 @@ endif
 all: temp_sensor
 default: temp_sensor
 
-sensor_combined : temp_sensor.o
-	$(CC) $(CFLAGS) -o temp_sensor temp_sensor.o $(LDFLAGS)
+temp_sensor: temp_sensor.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-sensor_combined.o : temp_sensor.c
-	$(CC) $(CFLAGS) -c temp_sensor.c $(LDFLAGS)
+temp_sensor.o: temp_sensor.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean :
 	rm -f *.o temp_sensor
+
