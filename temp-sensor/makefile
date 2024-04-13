@@ -1,16 +1,10 @@
-CROSS_COMPILE = arm-buildroot-linux-gnueabihf-
+CROSS_COMPILE = /home/sane5805/AESD/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
 
-ifeq ($(CC),)
-	CC=$(CROSS_COMPILE)gcc
-endif
+CC=$(CROSS_COMPILE)gcc
 
-ifeq ($(CFLAGS),)
-	CFLAGS= -g -Wall -Werror -ggdb
-endif
+CFLAGS= -g -Wall -Werror -ggdb
 
-ifeq ($(LDFLAGS),)
-	LDFLAGS= -lrt
-endif
+LDFLAGS= -lrt
 
 all: temp_sensor
 default: temp_sensor
