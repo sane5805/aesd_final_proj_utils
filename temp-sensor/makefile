@@ -1,4 +1,4 @@
-CROSS_COMPILE = arm-buildroot-linux-gnueabihf-
+CROSS_COMPILE = /home/sane5805/AESD/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
 
 ifeq ($(CC),)
 	CC=$(CROSS_COMPILE)gcc
