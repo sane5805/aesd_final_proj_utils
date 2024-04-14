@@ -11,15 +11,13 @@
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
 
+#define I2C_DEV_PATH			"/dev/i2c-1"
 
 // Define constants for temperature sensor and I2C communication
-#define TEMPERATURE_REGISTER	(0x06)
-#define OBJECT_TEMPERATURE_REGISTER	(0x07)
-#define AMBIENT_TEMPERATURE_REGISTER	(0x08)
+#define TEMPERATURE_SENSOR_ADDRESS	0x5A
+#define TEMPERATURE_REGISTER		0x06
+#define OBJECT_TEMPERATURE_REGISTER	0x07
 
-#define SOFT_RESET_COMMAND	(0xFE)
-#define TEMPERATURE_SENSOR_ADDRESS	(0x5A)
-#define I2C_DEVICE_PATH		("/dev/i2c-1")
 
 #define SLEEP_DURATION		(1000000)
 
@@ -27,61 +25,64 @@
 typedef union i2c_smbus_data i2c_data;
 
 // Declare file descriptor for I2C device
-int file_descriptor;
+int fdev;
 
 // Function to initialize I2C communication and message queue
 void initialize() {
 
     // Open I2C device
-    file_descriptor = open(I2C_DEVICE_PATH, O_RDWR);
+    fdev = open(I2C_DEV_PATH, O_RDWR);
+
+    if (fdev < 0) {
+	fprintf(stderr, "Failed to open I2C interface %s Error: %s\n", I2C_DEV_PATH, strerror(errno));
+	exit(EXIT_FAILURE);
+    }
 }
 
 // Function to continuously read temperature from the sensor and send it to the message queue
 void read_temperature() {
-    //uint8_t buffer[1];
-    char command;
-    i2c_data sensor_data;
-    double temp_val;
 
     // Set soft reset command and sensor address
-    //buffer[0] = SOFT_RESET_COMMAND;
     unsigned char sensor_slave_address = TEMPERATURE_SENSOR_ADDRESS;
     
     while(1) {
-        // Select temperature sensor device on the I2C bus
-        if (ioctl(file_descriptor, I2C_SLAVE, sensor_slave_address) < 0) {
-            fprintf(stderr, "Failed to select I2C-based temperature sensor device! Error: %s\n", strerror(errno));
+        // set slave device address, default MLX is 0x5A
+        if (ioctl(fdev, I2C_SLAVE, sensor_slave_address) < 0) {
+            fprintf(stderr, "Failed to select I2C slave device! Error: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
 
-        // Enable SMBus packet error checking
-        if (ioctl(file_descriptor, I2C_PEC, 1) < 0) {
+        // enable checksums control
+        if (ioctl(fdev, I2C_PEC, 1) < 0) {
             fprintf(stderr, "Failed to enable SMBus packet error checking, error: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
 
+	i2c_data data;
         // Set command to read object temperature
-        command = OBJECT_TEMPERATURE_REGISTER;
+        char command = OBJECT_TEMPERATURE_REGISTER;
 
-        // Define transaction data structure for SMBus read
-        struct i2c_smbus_ioctl_data transaction_data = {
+        // build request structure
+        struct i2c_smbus_ioctl_data sdata = {
             .read_write = I2C_SMBUS_READ,
             .command = command,
             .size = I2C_SMBUS_WORD_DATA,
-            .data = &sensor_data
+            .data = &data
         };
 
-        // Perform SMBus transaction to read temperature data
-        if (ioctl(file_descriptor, I2C_SMBUS, &transaction_data) < 0) {
+        // do actual request
+        if (ioctl(fdev, I2C_SMBUS, &sdata) < 0) {
             fprintf(stderr, "Failed to perform I2C_SMBUS transaction, error: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
 
-	temp_val = (double) sensor_data.word;
-
-        temp_val = ((temp_val * 0.02) - 0.01) - 273.15;
- 	
-	fprintf(stdout, "\n temp_val = %f \n", temp_val);
+        // calculate temperature in Celsius by formula from datasheet
+	double temp = (double) data.word;
+        temp = (temp * 0.02) - 0.01;
+ 	temp = temp - 273.15;
+	    
+	// print result
+	fprintf(stdout, "\n temp = %f \n", temp);
 
         // Introduce delay
         usleep(SLEEP_DURATION);
