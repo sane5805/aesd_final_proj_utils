@@ -1,4 +1,4 @@
-CROSS_COMPILE = /home/sane5805/AESD/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
+CROSS_COMPILE =
 
 CC=$(CROSS_COMPILE)gcc
 
@@ -9,11 +9,11 @@ LDFLAGS= -lrt
 all: temp_sensor
 default: temp_sensor
 
-temp_sensor: temp_sensor.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+temp_sensor : temp_sensor.o
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -o temp_sensor temp_sensor.o $(LDFLAGS)
 
-temp_sensor.o: temp_sensor.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+temp_sensor.o : temp_sensor.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c temp_sensor.c $(LDFLAGS)
 
 clean :
 	rm -f *.o temp_sensor
