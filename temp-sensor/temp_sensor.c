@@ -1,15 +1,16 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-#include <unistd.h>
+
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
 #include <linux/i2c-dev.h>
-#include <linux/i2c.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 
 #define I2C_DEV_PATH			"/dev/i2c-1"
 
