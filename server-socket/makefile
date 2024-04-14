@@ -1,12 +1,19 @@
-CC=gcc
-CFLAGS=-g -Wall -Werror
-LDFLAGS=-lrt
+CROSS_COMPILE =
 
-server: server.o
-	$(CC) $(CFLAGS) -o server server.o $(LDFLAGS)
+CC=$(CROSS_COMPILE)gcc
 
-server.o: server.c
-	$(CC) $(CFLAGS) -c server.c $(LDFLAGS)
+CFLAGS= -g -Wall -Werror -ggdb
 
-clean:
-	rm -f server *.o
+LDFLAGS= -lrt
+
+all: server
+default: server
+
+server : server.o
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -o server server.o $(LDFLAGS)
+
+server.o : server.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c server.c $(LDFLAGS)
+
+clean :
+	rm -f *.o server
