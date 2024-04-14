@@ -81,7 +81,7 @@ void read_temperature() {
 
         temp_val = ((temp_val * 0.02) - 0.01) - 273.15;
  	
-	//fprintf("\n temp_val = %d \n");
+	fprintf(stdout, "\n temp_val = %f \n", temp_val);
 
         // Introduce delay
         usleep(SLEEP_DURATION);
