@@ -16,54 +16,43 @@
 #include <mqueue.h> // Include POSIX message queue library
 #include <fcntl.h>
 #include <errno.h>
-
 #define MAX 80 
 #define PORT 8080 
 #define SA struct sockaddr 
-
-struct mq_attr attr;
+   
+   
 mqd_t mqd;
 int sockfd, connfd;
-
+struct mq_attr attr;
 
 // Function designed for chat between client and server. 
 void func(int connfd) 
 { 
-    int bytes_sent;
     char buff[sizeof(double)];
-    char toClient[50];
-    unsigned int priority;
-    double temperature_data;
+    double temp;
+    char temp_value_for_client[60]; 
+    unsigned int msg_prio;
+
     int n; 
     // infinite loop for chat 
     for (;;) { 
-
-        if (mq_receive(mqd, buff, sizeof(double), &priority) == -1) {
-            //if (errno != EAGAIN) {
-                fprintf(stderr, "Failed to receive message from queue: %s\n", strerror(errno));
-            //}
+        bzero(buff, sizeof(double)); 
+   
+        if (mq_receive(mqd, buff, sizeof(double), &msg_prio) == -1) {
+            fprintf(stderr, "Failed to receive message from queue: %s\n", strerror(errno));
         } 
-        //else {
-            printf("Received temperature from sensor: %f\n", buff);
-            // Convert temperature to string and broadcast it to client
-            //char temperature_str[MAX];
+        // read the message from client and copy it in buffer 
 
-            memcpy(&temperature_data, buff, sizeof(double));
-            //snprintf(temperature_str, MAX, "%f", msg);
+        memcpy(&temp, buff, sizeof(double));
+        //read(connfd, buff, sizeof(buff)); 
+        // print buffer which contains the client contents 
 
-            sprintf(toClient, "Temperature = %0.2lf", temperature_data);
-           
-            bytes_sent = send(connfd, toClient, strlen(toClient) + 1, 0);
-        	if(bytes_sent == -1)
-        	{
-        	    printf("\n\rError in sending bytes.");
-        	    return;
-        	}
-        //}
-
-        // Introduce some delay before broadcasting the next temperature
-        //usleep(1000000); // Adjust as needed
-
+        sprintf(temp_value_for_client, "temp = %0.2lf", temp);
+	
+	// and send that buffer to client
+        send(connfd, temp_value_for_client, strlen(toClient) + 1, 0);
+   
+   
         // if msg contains "Exit" then server exit and chat ended. 
         if (strncmp("exit", buff, 4) == 0) { 
             printf("Server Exit...\n"); 
@@ -77,7 +66,6 @@ int main()
 { 
     int len; 
     struct sockaddr_in servaddr, cli; 
-    
    
     // socket create and verification 
     sockfd = socket(AF_INET, SOCK_STREAM, 0); 
@@ -93,6 +81,7 @@ int main()
         printf("\n\rError in setting up socket options. Error: %s", strerror(errno)); 
         exit(0); 
     }
+    
     bzero(&servaddr, sizeof(servaddr)); 
    
     // assign IP, PORT 
@@ -115,13 +104,13 @@ int main()
     } 
     else {
         printf("Server listening..\n"); 
-        len = sizeof(cli); 
+    	len = sizeof(cli); 
     }
-    
-    // Create message queue for communication between temp_sensor and server
+
+    // message queue opening for retriving data from temperature sensor
     mqd = mq_open("/temperature_queue", O_RDWR);
     if (mqd == -1) {
-        fprintf(stderr, "Failed to open message queue: %s\n", strerror(errno));
+        fprintf(stderr, "Failed to open the queue: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
    
