@@ -42,7 +42,7 @@ void func(int connfd, mqd_t mq)
             // Convert temperature to string and broadcast it to client
             char temperature_str[MAX];
             snprintf(temperature_str, MAX, "%f", msg.temperature);
-            write(sockfd, temperature_str, strlen(temperature_str), 0);
+            send(sockfd, temperature_str, strlen(temperature_str), 0);
         }
 
         // Introduce some delay before broadcasting the next temperature
