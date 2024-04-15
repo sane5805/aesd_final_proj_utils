@@ -1,3 +1,13 @@
+
+/***********************************************************************
+/* @name: temp_sensor.c
+/*
+/* @reference: https://olegkutkov.me/2017/08/10/mlx90614-raspberry/
+/*
+/* @author: Saurav Negi
+/***********************************************************************/
+
+
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -23,39 +33,36 @@
 #define TEMPERATURE_REGISTER		0x06
 #define OBJECT_TEMPERATURE_REGISTER	0x07
 
-#define SLEEP_DURATION		(1000000)
-
-typedef struct {
-    double temperature;
-} Message;
+#define SLEEP_DURATION			1000000
 
 // Define union for I2C data
 typedef union i2c_smbus_data i2c_data;
+
 // Declare file descriptor for I2C device
 int fdev;
 
-mqd_t mqd;
+mqd_t mq;
 
-struct mq_attr attr;
 
 // Function to initialize I2C communication and message queue
 void initialize() {
+
+    struct mq_attr attr;
 
     // Open I2C device
     fdev = open(I2C_DEV_PATH, O_RDWR);
 
     if (fdev < 0) {
-    	fprintf(stderr, "Failed to open I2C interface %s Error: %s\n", I2C_DEV_PATH, strerror(errno));
-    	exit(EXIT_FAILURE);
+	fprintf(stderr, "Failed to open I2C interface %s Error: %s\n", I2C_DEV_PATH, strerror(errno));
+	exit(EXIT_FAILURE);
     }
-
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(double);
 
     // Open or create the message queue
-    mqd = mq_open("/temperature_queue", O_CREAT | O_RDWR, S_IRWXU, &attr);
+    mq = mq_open("/temperature_queue", O_CREAT | O_RDWR, S_IRWXU, &attr);
     if (mqd == (mqd_t)-1) {
-        fprintf(stderr, "Failed to open message queue: %s\n", strerror(errno));
+        fprintf(stderr, "Failed to open the queue: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 }
@@ -63,27 +70,23 @@ void initialize() {
 // Function to continuously read temperature from the sensor and send it to the message queue
 void read_temperature() {
 
-    char sensor_buffer[sizeof(double)];
-
     // Set soft reset command and sensor address
     unsigned char sensor_slave_address = TEMPERATURE_SENSOR_ADDRESS;
-
+    
     while(1) {
-
         // set slave device address, default MLX is 0x5A
         if (ioctl(fdev, I2C_SLAVE, sensor_slave_address) < 0) {
             fprintf(stderr, "Failed to select I2C slave device! Error: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
-        
+
         // enable checksums control
         if (ioctl(fdev, I2C_PEC, 1) < 0) {
             fprintf(stderr, "Failed to enable SMBus packet error checking, error: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
 
-        i2c_data data;
-
+	i2c_data data;
         // Set command to read object temperature
         char command = OBJECT_TEMPERATURE_REGISTER;
 
@@ -100,20 +103,22 @@ void read_temperature() {
             fprintf(stderr, "Failed to perform I2C_SMBUS transaction, error: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
-	
-	    bzero(sensor_buffer, sizeof(double));
+
         // calculate temperature in Celsius by formula from datasheet
-	    double temp = (double) data.word;
+	double temp = (double) data.word;
         temp = (temp * 0.02) - 0.01;
-     	temp = temp - 273.15;
+ 	temp = temp - 273.15;
+	    
+	// print result
+	//fprintf(stdout, "\n temp = %f \n", temp);
 
-    	// print result
-    	//fprintf(stdout, "\n temp = %f \n", temp);
 
-	//usleep(SLEEP_DURATION);
-
-        memcpy(sensor_buffer, &temp, sizeof(double));
-    	if(mq_send(mqd, sensor_buffer, sizeof(double), 1) == -1)
+	char temp_val_for_server[sizeof(double)];
+	
+	bzero(temp_val_for_server, sizeof(double));
+        memcpy(temp_val_for_server, &temp, sizeof(double));
+	
+    	if(mq_send(mq, temp_val_for_server, sizeof(double), 1) == -1)
     	{
     	    printf("\n\rError in sending data via message queue. Error: %s", strerror(errno));
     	}
@@ -129,5 +134,6 @@ int main() {
 
     // Read temperature continuously
     read_temperature();
+
     return 0;
 }
