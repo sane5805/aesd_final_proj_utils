@@ -120,7 +120,7 @@ int main()
 
     // Create message queue for communication between temp_sensor and server
     mqd = mq_open("/temperature_queue", O_RDWR);
-    if (mq == -1) {
+    if (mqd == -1) {
         fprintf(stderr, "Failed to open message queue: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
