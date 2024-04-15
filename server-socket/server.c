@@ -50,7 +50,7 @@ void func(int connfd)
         sprintf(temp_value_for_client, "temp = %0.2lf", temp);
 	
 	// and send that buffer to client
-        send(connfd, temp_value_for_client, strlen(toClient) + 1, 0);
+        send(connfd, temp_value_for_client, strlen(temp_value_for_client) + 1, 0);
    
    
         // if msg contains "Exit" then server exit and chat ended. 
