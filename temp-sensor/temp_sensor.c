@@ -101,7 +101,7 @@ void read_temperature() {
             exit(EXIT_FAILURE);
         }
 	
-	    bzero(sensor_buffer, sizeof(double) + sizeof(double));
+	    bzero(sensor_buffer, sizeof(double));
         // calculate temperature in Celsius by formula from datasheet
 	    double temp = (double) data.word;
         temp = (temp * 0.02) - 0.01;
