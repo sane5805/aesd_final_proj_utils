@@ -1,126 +1,170 @@
+
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <errno.h>
-#include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <linux/i2c-dev.h>
+#include <linux/i2c.h>
 #include <unistd.h>
-#include <linux/i2c.h> // Include this for I2C_SMBUS_READ and I2C_SMBUS_WORD_DATA
-// Assuming i2c_smbus_data is defined in linux/i2c-dev.h, but it might be in another header.
-#include <linux/i2c-dev.h> 
-#include <mqueue.h> // Include POSIX message queue library
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <mqueue.h>
 
+/* Macros */
+#define MLX90614_TA 			(0x06) //RAM register
+#define MLX90614_TOBJ1 		(0x07) //RAM register
+#define MLX90614_TOBJ2 		(0x08) //RAM register
 
-#define I2C_DEV_PATH			"/dev/i2c-1"
+#define SOFT_RESET_CMD			(0xFE)	//Soft-Reset command to humidity sensor
+#define HUMIDITY_CMD			(0xE5)	//Hold master mode for measuring humidity
 
-// Define constants for temperature sensor and I2C communication
-#define TEMPERATURE_SENSOR_ADDRESS	0x5A
-#define TEMPERATURE_REGISTER		0x06
-#define OBJECT_TEMPERATURE_REGISTER	0x07
+#define TEMPERATURE_SLAVE_ADDRESS	(0x5A) //address of the MLX90614 temperature sensor
+#define HUMIDITY_SLAVE_ADDRESS	(0x40) //address of the HTU21D humidity sensor
+#define I2C_DEV_PATH 			("/dev/i2c-1")
 
-#define SLEEP_DURATION		(1000000)
+#define SLEEP_DURATION 		(1000000) // for giving the delay of 1 second
 
-typedef struct {
-    double temperature;
-} Message;
+/* Just in case if these were not defined */
+#ifndef I2C_SMBUS_READ 
+#define I2C_SMBUS_READ 1 
+#endif 
+#ifndef I2C_SMBUS_WRITE 
+#define I2C_SMBUS_WRITE 0 
+#endif
 
-// Define union for I2C data
+struct mq_attr attr;
+
 typedef union i2c_smbus_data i2c_data;
-// Declare file descriptor for I2C device
-int fdev;
 
-mqd_t mq;
-
-// Function to initialize I2C communication and message queue
-void initialize() {
-    
-    // Open I2C device
-    fdev = open(I2C_DEV_PATH, O_RDWR);
-    
-    if (fdev < 0) {
-    	fprintf(stderr, "Failed to open I2C interface %s Error: %s\n", I2C_DEV_PATH, strerror(errno));
-    	exit(EXIT_FAILURE);
+int main()
+{
+    uint8_t buf[1];
+    uint8_t buf1[3] = {0};
+    uint16_t humidity_sensor_data = 0;
+    double temperature, humidity;
+    int rv;
+    buf[0] = SOFT_RESET_CMD;
+    char command;
+    uint8_t soft_reset_flag = 1;
+    mqd_t mqd;
+    char sensor_buffer[sizeof(double) + sizeof(double)];
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = sizeof(double) + sizeof(double);
+    // open i2c bus
+    int fdev = open(I2C_DEV_PATH, O_RDWR); 
+    if (fdev < 0) 
+    {
+        fprintf(stderr, "Failed to open I2C interface %s Error: %s\n", I2C_DEV_PATH, strerror(errno));
+        return -1;
     }
+    
+    //storing the address in slave_addr variable
+    unsigned char temp_slave_addr = TEMPERATURE_SLAVE_ADDRESS; 
+    unsigned char humidity_slave_addr = HUMIDITY_SLAVE_ADDRESS;
+    // trying to read something from the device using SMBus READ request
+    i2c_data data;
 
-    // Open or create the message queue
-    mq = mq_open("/temperature_queue", O_CREAT | O_RDWR, 0666, NULL);
-    if (mq == (mqd_t)-1) {
-        fprintf(stderr, "Failed to open message queue: %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
+    mqd = mq_open("/sendmq", O_CREAT | O_RDWR, S_IRWXU, &attr);
+    if(mqd == (mqd_t)-1)
+    {
+        printf("\n\rError in creating a message queue. Error: %s", strerror(errno));
     }
-}
-
-// Function to continuously read temperature from the sensor and send it to the message queue
-void read_temperature() {
     
-    // Set soft reset command and sensor address
-    unsigned char sensor_slave_address = TEMPERATURE_SENSOR_ADDRESS;
-    
-    while(1) {
-        
-        // set slave device address, default MLX is 0x5A
-        if (ioctl(fdev, I2C_SLAVE, sensor_slave_address) < 0) {
-            fprintf(stderr, "Failed to select I2C slave device! Error: %s\n", strerror(errno));
-            exit(EXIT_FAILURE);
+    while(1)
+    {
+        if (ioctl(fdev, I2C_SLAVE, temp_slave_addr) < 0) 
+        {
+            fprintf(stderr, "Failed to select I2C-based temperature slave device! Error: %s\n", strerror(errno));
+            return -1;
         }
-        
+
         // enable checksums control
-        if (ioctl(fdev, I2C_PEC, 1) < 0) {
+        if (ioctl(fdev, I2C_PEC, 1) < 0) 
+        {
             fprintf(stderr, "Failed to enable SMBus packet error checking, error: %s\n", strerror(errno));
-            exit(EXIT_FAILURE);
+            return -1;
         }
-	    
-        i2c_data data;
-        
-        // Set command to read object temperature
-        char command = OBJECT_TEMPERATURE_REGISTER;
-        
+
+        command = MLX90614_TOBJ1; //setting the command as 0x07
+    
         // build request structure
-        struct i2c_smbus_ioctl_data sdata = {
+        struct i2c_smbus_ioctl_data sdat = 
+        {
             .read_write = I2C_SMBUS_READ,
             .command = command,
             .size = I2C_SMBUS_WORD_DATA,
             .data = &data
         };
-        
         // do actual request
-        if (ioctl(fdev, I2C_SMBUS, &sdata) < 0) {
-            fprintf(stderr, "Failed to perform I2C_SMBUS transaction, error: %s\n", strerror(errno));
-            exit(EXIT_FAILURE);
-        }
-        
-        // calculate temperature in Celsius by formula from datasheet
-	    double temp = (double) data.word;
-        temp = (temp * 0.02) - 0.01;
-     	temp = temp - 273.15;
-	    
-    	// print result
-    	//fprintf(stdout, "\n temp = %f \n", temp);
+	if (ioctl(fdev, I2C_SMBUS, &sdat) < 0) 
+	{
+       	fprintf(stderr, "Failed to perform I2C_SMBUS transaction, error: %s\n", strerror(errno));
+        	return -1;
+    	}
+	
+	bzero(sensor_buffer, sizeof(double) + sizeof(double));
+	// fetching the temperature data from the sensor
+	temperature = (double) data.word; 
+	
+	// converting the temperature in Celsius using the formula from datasheet
+    	temperature = (temperature * 0.02) - 0.01;
+    	temperature = temperature - 273.15;
 
-        // Sending the temperature to the message queue
-        Message msg;
-        // Calculate temperature
-        msg.temperature = temp; // Example value, replace this with actual temperature
-        if (mq_send(mq, (const char *)&msg, sizeof(Message), 0) == -1) {
-            fprintf(stderr, "Failed to send message to queue: %s\n", strerror(errno));
-            exit(EXIT_FAILURE);
+        //logging the temperature
+    	//printf("Temperature of the busbar = %04.2f\n", temperature);
+
+    	usleep(SLEEP_DURATION); //delay of 1 second
+    	
+    	if (ioctl(fdev, I2C_SLAVE, humidity_slave_addr) < 0) 
+        {
+            fprintf(stderr, "Failed to select I2C-based humidty slave device! Error: %s\n", strerror(errno));
+            return -1;
+        }
+        if(soft_reset_flag)
+        {
+            rv = write (fdev, buf, 1);
+            if (rv < 0)
+            {
+                printf ("\n\rError in writing (Soft reset).");
+            }
+            usleep (17000);
+            buf[0] = HUMIDITY_CMD;
+            soft_reset_flag = 0;
         }
         
-        // Introduce delay
-        usleep(SLEEP_DURATION);
+        rv = write (fdev, buf, 1);
+        if (rv < 0)
+        {
+            printf ("\n\rError in writing command to humidity.");
+            exit(1);
+        }
+        sleep(1);	//delay of 1 second before read operation
+        rv = read (fdev, buf1, 3);
+        if(rv < 0)
+        {
+            printf("\n\rError in reading. Error: %s", strerror(errno));
+            exit(1);
+        }
+        else if(rv == 0)
+        {
+            printf("\n\rNo data was read.");
+        }
+        usleep (4000);
+        humidity_sensor_data = buf1[0] << 8;
+        humidity_sensor_data += buf[1];
+        humidity_sensor_data &= ~0x003;
+        
+        humidity = (-6.0 + 125.0 / 65536 * (double) humidity_sensor_data);       
+                
+    	memcpy(sensor_buffer, &temperature, sizeof(double));
+    	memcpy(sensor_buffer + sizeof(double), &humidity, sizeof(double));
+    	if(mq_send(mqd, sensor_buffer, sizeof(double) + sizeof(double), 1) == -1)
+    	{
+    	    printf("\n\rError in sending data via message queue. Error: %s", strerror(errno));
+    	}
+    	sleep(1);
     }
-}
-
-int main() {
-    // Initialize I2C communication and message queue
-    initialize();
-    
-    // Read temperature continuously
-    read_temperature();
-    return 0;
 }
