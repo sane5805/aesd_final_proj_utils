@@ -16,7 +16,7 @@
 #include <mqueue.h> // Include POSIX message queue library
 #include <fcntl.h>
 #include <errno.h>
-#define MAX 80 
+#define MAX 1024 
 #define PORT 8080 
 #define SA struct sockaddr 
 
