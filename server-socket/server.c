@@ -24,7 +24,6 @@
 struct mq_attr attr;
 mqd_t mqd;
 int sockfd, connfd;
-bool signal_indication = false;
 
 
 // Function designed for chat between client and server. 
