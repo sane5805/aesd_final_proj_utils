@@ -16,31 +16,44 @@
 #include <mqueue.h> // Include POSIX message queue library
 #include <fcntl.h>
 #include <errno.h>
-#define MAX 1024 
+
+#define MAX 80 
 #define PORT 8080 
 #define SA struct sockaddr 
 
-   
+struct mq_attr attr;
+mqd_t mqd;
+int sockfd, connfd;
+bool signal_indication = false;
+
+
 // Function designed for chat between client and server. 
 void func(int sockfd, mqd_t mq) 
 { 
-    char buff[MAX]; 
+    int bytes_sent;
+    char buff[sizeof(double)];
+    char toClient[50];
+    unsigned int priority;
+    double temperature_data;
     int n; 
     // infinite loop for chat 
     for (;;) { 
-        // Receive message from message queue (Temperature from sensor)
-        //Message msg;
-        char msg[sizeof(double) + sizeof(double)];
-        if (mq_receive(mq, msg, sizeof(double) + sizeof(double), NULL) == -1) {
-            if (errno != EAGAIN) {
+
+        if (mq_receive(mq, buff, sizeof(double), &priority) == -1) {
+            //if (errno != EAGAIN) {
                 fprintf(stderr, "Failed to receive message from queue: %s\n", strerror(errno));
-            }
+            //}
         } else {
-            printf("Received temperature from sensor: %f\n", msg);
+            printf("Received temperature from sensor: %f\n", buff);
             // Convert temperature to string and broadcast it to client
-            char temperature_str[MAX];
-            snprintf(temperature_str, MAX, "%f", msg);
-            send(sockfd, temperature_str, strlen(temperature_str), 0);
+            //char temperature_str[MAX];
+
+            memcpy(&temperature_data, buff, sizeof(double));
+            //snprintf(temperature_str, MAX, "%f", msg);
+
+            sprintf(toClient, "Temperature = %0.2lf", temperature_data);
+           
+            send(sockfd, toClient, strlen(toClient) + 1, 0);
         }
 
         // Introduce some delay before broadcasting the next temperature
