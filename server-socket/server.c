@@ -27,7 +27,7 @@ int sockfd, connfd;
 
 
 // Function designed for chat between client and server. 
-void func(int sockfd, mqd_t mq) 
+void func(int connfd) 
 { 
     int bytes_sent;
     char buff[sizeof(double)];
@@ -38,11 +38,12 @@ void func(int sockfd, mqd_t mq)
     // infinite loop for chat 
     for (;;) { 
 
-        if (mq_receive(mq, buff, sizeof(double), &priority) == -1) {
+        if (mq_receive(mqd, buff, sizeof(double), &priority) == -1) {
             //if (errno != EAGAIN) {
                 fprintf(stderr, "Failed to receive message from queue: %s\n", strerror(errno));
             //}
-        } else {
+        } 
+        //else {
             printf("Received temperature from sensor: %f\n", buff);
             // Convert temperature to string and broadcast it to client
             //char temperature_str[MAX];
@@ -52,11 +53,16 @@ void func(int sockfd, mqd_t mq)
 
             sprintf(toClient, "Temperature = %0.2lf", temperature_data);
            
-            send(sockfd, toClient, strlen(toClient) + 1, 0);
-        }
+            bytes_sent = send(connfd, toClient, strlen(toClient) + 1, 0);
+        	if(bytes_sent == -1)
+        	{
+        	    printf("\n\rError in sending bytes.");
+        	    return;
+        	}
+        //}
 
         // Introduce some delay before broadcasting the next temperature
-        usleep(1000000); // Adjust as needed
+        //usleep(1000000); // Adjust as needed
 
         // if msg contains "Exit" then server exit and chat ended. 
         if (strncmp("exit", buff, 4) == 0) { 
@@ -69,16 +75,9 @@ void func(int sockfd, mqd_t mq)
 // Driver function 
 int main() 
 { 
-    int sockfd, connfd, len; 
+    int len; 
     struct sockaddr_in servaddr, cli; 
-    mqd_t mq;
-
-    // Create message queue for communication between temp_sensor and server
-    mq = mq_open("/temperature_queue", O_CREAT | O_RDWR, 0666, NULL);
-    if (mq == (mqd_t)-1) {
-        fprintf(stderr, "Failed to open message queue: %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+    
    
     // socket create and verification 
     sockfd = socket(AF_INET, SOCK_STREAM, 0); 
@@ -88,6 +87,12 @@ int main()
     } 
     else
         printf("Socket successfully created..\n"); 
+
+    if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &(int){1}, sizeof(int)) == -1)
+    {
+        printf("\n\rError in setting up socket options. Error: %s", strerror(errno)); 
+        exit(0); 
+    }
     bzero(&servaddr, sizeof(servaddr)); 
    
     // assign IP, PORT 
@@ -110,7 +115,15 @@ int main()
     } 
     else
         printf("Server listening..\n"); 
-    len = sizeof(cli); 
+    
+    //len = sizeof(cli); 
+
+    // Create message queue for communication between temp_sensor and server
+    mqd = mq_open("/temperature_queue", O_RDWR);
+    if (mq == -1) {
+        fprintf(stderr, "Failed to open message queue: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
    
     // Accept the data packet from client and verification 
     connfd = accept(sockfd, (SA*)&cli, (socklen_t *)&len); 
@@ -122,12 +135,13 @@ int main()
         printf("server accept the client...\n"); 
    
     // Function for chatting between client and server 
-    func(connfd, mq); 
+    func(connfd); 
    
     // After chatting close the socket 
     close(sockfd); 
+    close(connfd); 
 
     // Close message queue
-    mq_close(mq);
+    mq_close(mqd);
     mq_unlink("/temperature_queue");
 }
