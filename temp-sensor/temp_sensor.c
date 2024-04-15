@@ -61,7 +61,7 @@ void initialize() {
 
     // Open or create the message queue
     mq = mq_open("/temperature_queue", O_CREAT | O_RDWR, S_IRWXU, &attr);
-    if (mqd == (mqd_t)-1) {
+    if (mq == (mqd_t)-1) {
         fprintf(stderr, "Failed to open the queue: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
