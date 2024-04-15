@@ -113,11 +113,11 @@ int main()
         printf("Listen failed...\n"); 
         exit(0); 
     } 
-    else
+    else {
         printf("Server listening..\n"); 
+        len = sizeof(cli); 
+    }
     
-    //len = sizeof(cli); 
-
     // Create message queue for communication between temp_sensor and server
     mqd = mq_open("/temperature_queue", O_RDWR);
     if (mqd == -1) {
