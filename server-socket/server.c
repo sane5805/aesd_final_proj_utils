@@ -20,9 +20,6 @@
 #define PORT 8080 
 #define SA struct sockaddr 
 
-typedef struct {
-    double temperature;
-} Message;
    
 // Function designed for chat between client and server. 
 void func(int sockfd, mqd_t mq) 
@@ -32,16 +29,17 @@ void func(int sockfd, mqd_t mq)
     // infinite loop for chat 
     for (;;) { 
         // Receive message from message queue (Temperature from sensor)
-        Message msg;
-        if (mq_receive(mq, (char *)&msg, sizeof(Message), NULL) == -1) {
+        //Message msg;
+        char msg[sizeof(double) + sizeof(double)];
+        if (mq_receive(mq, msg, sizeof(double) + sizeof(double), NULL) == -1) {
             if (errno != EAGAIN) {
                 fprintf(stderr, "Failed to receive message from queue: %s\n", strerror(errno));
             }
         } else {
-            printf("Received temperature from sensor: %f\n", msg.temperature);
+            printf("Received temperature from sensor: %f\n", msg);
             // Convert temperature to string and broadcast it to client
             char temperature_str[MAX];
-            snprintf(temperature_str, MAX, "%f", msg.temperature);
+            snprintf(temperature_str, MAX, "%f", msg);
             send(sockfd, temperature_str, strlen(temperature_str), 0);
         }
 
