@@ -34,7 +34,7 @@ typedef union i2c_smbus_data i2c_data;
 // Declare file descriptor for I2C device
 int fdev;
 
-mqd_t mq;
+mqd_t mqd;
 
 struct mq_attr attr;
 
@@ -53,7 +53,7 @@ void initialize() {
     attr.mq_msgsize = sizeof(double);
 
     // Open or create the message queue
-    mq = mq_open("/temperature_queue", O_CREAT | O_RDWR, S_IRWXU, &attr);
+    mqd = mq_open("/temperature_queue", O_CREAT | O_RDWR, S_IRWXU, &attr);
     if (mq == (mqd_t)-1) {
         fprintf(stderr, "Failed to open message queue: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
@@ -110,7 +110,7 @@ void read_temperature() {
     	// print result
     	//fprintf(stdout, "\n temp = %f \n", temp);
 
-	    usleep(SLEEP_DURATION);
+	//usleep(SLEEP_DURATION);
 
         memcpy(sensor_buffer, &temp, sizeof(double));
     	if(mq_send(mqd, sensor_buffer, sizeof(double), 1) == -1)
