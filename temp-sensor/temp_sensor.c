@@ -36,6 +36,8 @@ int fdev;
 
 mqd_t mq;
 
+struct mq_attr attr;
+
 // Function to initialize I2C communication and message queue
 void initialize() {
 
@@ -47,8 +49,11 @@ void initialize() {
     	exit(EXIT_FAILURE);
     }
 
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = sizeof(double);
+
     // Open or create the message queue
-    mq = mq_open("/temperature_queue", O_CREAT | O_RDWR, 0666, NULL);
+    mq = mq_open("/temperature_queue", O_CREAT | O_RDWR, S_IRWXU, &attr);
     if (mq == (mqd_t)-1) {
         fprintf(stderr, "Failed to open message queue: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
@@ -95,7 +100,8 @@ void read_temperature() {
             fprintf(stderr, "Failed to perform I2C_SMBUS transaction, error: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
-
+	
+	    bzero(sensor_buffer, sizeof(double) + sizeof(double));
         // calculate temperature in Celsius by formula from datasheet
 	    double temp = (double) data.word;
         temp = (temp * 0.02) - 0.01;
@@ -103,6 +109,8 @@ void read_temperature() {
 
     	// print result
     	//fprintf(stdout, "\n temp = %f \n", temp);
+
+	    usleep(SLEEP_DURATION);
 
         memcpy(sensor_buffer, &temp, sizeof(double));
     	if(mq_send(mqd, sensor_buffer, sizeof(double), 1) == -1)
