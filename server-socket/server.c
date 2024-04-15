@@ -25,7 +25,7 @@ typedef struct {
 } Message;
    
 // Function designed for chat between client and server. 
-void func(int connfd, mqd_t mq) 
+void func(int sockfd, mqd_t mq) 
 { 
     char buff[MAX]; 
     int n; 
@@ -116,4 +116,8 @@ int main()
    
     // After chatting close the socket 
     close(sockfd); 
+
+    // Close message queue
+    mq_close(mq);
+    mq_unlink("/temperature_queue");
 }
