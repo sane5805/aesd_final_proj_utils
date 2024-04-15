@@ -13,6 +13,9 @@
 #include <sys/socket.h> 
 #include <sys/types.h> 
 #include <unistd.h> // read(), write(), close()
+#include <mqueue.h> // Include POSIX message queue library
+#include <fcntl.h>
+#include <errno.h>
 #define MAX 80 
 #define PORT 8080 
 #define SA struct sockaddr 
