@@ -20,15 +20,6 @@ void communicate_with_server(SOCKET sockfd)
 
     for (;;)
     {
-        printf("Enter the message: ");
-        fgets(buff, MAX, stdin);
-        send(sockfd, buff, strlen(buff), 0);
-        if (strncmp(buff, "exit", 4) == 0)
-        {
-            printf("Client Exit...\n");
-            break;
-        }
-
         n = recv(sockfd, buff, sizeof(buff), 0);
         if (n <= 0)
         {
@@ -36,7 +27,7 @@ void communicate_with_server(SOCKET sockfd)
             break;
         }
         buff[n] = '\0';
-        printf("From Server: %s\n", buff);
+        printf("Temperature from Server: %s\n", buff);
     }
 }
 
