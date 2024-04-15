@@ -11,6 +11,9 @@
 #include <linux/i2c.h> // Include this for I2C_SMBUS_READ and I2C_SMBUS_WORD_DATA
 // Assuming i2c_smbus_data is defined in linux/i2c-dev.h, but it might be in another header.
 #include <linux/i2c-dev.h> 
+#include <mqueue.h> // Include POSIX message queue library
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 
 #define I2C_DEV_PATH			"/dev/i2c-1"
